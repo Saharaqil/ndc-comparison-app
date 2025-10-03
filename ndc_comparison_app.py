@@ -2,38 +2,40 @@ import pandas as pd
 import streamlit as st
 import re
 
-# --- Helper: clean NDC ---
+# --- Helper function to clean NDCs ---
 def clean_ndc(ndc):
     if pd.isna(ndc):
         return None
     ndc = str(ndc)
-    ndc = re.sub(r'\D', '', ndc)   # remove non-numeric
+    ndc = re.sub(r'\D', '', ndc)   # remove non-numeric chars like dashes
     if len(ndc) > 10:
         ndc = ndc[-10:]            # keep last 10 digits if longer
-    return ndc.zfill(10)
+    return ndc.zfill(10)           # pad to 10 digits
 
-# --- Comparison function ---
+# --- Main comparison function ---
 def compare_ndc_files(dispense_file, purchase_file):
-    # Load CSVs
+    # Load
     dispense_df = pd.read_csv(dispense_file)
     purchase_df = pd.read_csv(purchase_file)
 
-    # Clean columns
+    # Clean column names
     dispense_df.columns = dispense_df.columns.str.strip()
     purchase_df.columns = purchase_df.columns.str.strip()
 
-    # Clean NDCs
+    # Clean NDC values
     dispense_df["NDC"] = dispense_df["NDC"].apply(clean_ndc)
     purchase_df["NDC"] = purchase_df["NDC"].apply(clean_ndc)
 
-    # Rename
-    dispense_df.rename(columns={"Rx Quantity Filled": "Dispensed_Qty", "Drug Name": "Drug_Name"}, inplace=True)
-    purchase_df.rename(columns={"TOTAL": "Purchased_Qty", "Product Description": "Product_Description"}, inplace=True)
+    # Rename columns for clarity
+    dispense_df.rename(columns={"Rx Quantity Filled": "Dispensed_Qty", 
+                                "Drug Name": "Drug_Name"}, inplace=True)
+    purchase_df.rename(columns={"TOTAL": "Purchased_Qty", 
+                                "Product Description": "Product_Description"}, inplace=True)
 
     # Merge
     comparison_df = pd.merge(dispense_df, purchase_df, on="NDC", how="outer")
 
-    # Difference
+    # Difference column
     comparison_df["Difference"] = comparison_df["Purchased_Qty"].fillna(0) - comparison_df["Dispensed_Qty"].fillna(0)
 
     return comparison_df
